@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.job4j.articles.model.Word;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -46,9 +47,13 @@ public class WordStore implements Store<Word>, AutoCloseable {
     private void initScheme() {
         LOGGER.info("Создание схемы таблицы слов");
         try (var statement = connection.createStatement()) {
-            var sql = Files.readString(Path.of("db/scripts", "dictionary.sql"));
-            statement.execute(sql);
-        } catch (Exception e) {
+            try {
+                var sql = Files.readString(Path.of("db/scripts", "dictionary.sql"));
+                statement.execute(sql);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (SQLException e) {
             LOGGER.error("Не удалось выполнить операцию: { }", e.getCause());
             throw new IllegalStateException();
         }
@@ -57,9 +62,13 @@ public class WordStore implements Store<Word>, AutoCloseable {
     private void initWords() {
         LOGGER.info("Заполнение таблицы слов");
         try (var statement = connection.createStatement()) {
-            var sql = Files.readString(Path.of("db/scripts", "words.sql"));
-            statement.executeLargeUpdate(sql);
-        } catch (Exception e) {
+            try {
+                var sql = Files.readString(Path.of("db/scripts", "words.sql"));
+                statement.executeLargeUpdate(sql);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (SQLException e) {
             LOGGER.error("Не удалось выполнить операцию: { }", e.getCause());
             throw new IllegalStateException();
         }
@@ -76,7 +85,7 @@ public class WordStore implements Store<Word>, AutoCloseable {
             if (key.next()) {
                 model.setId(key.getInt(1));
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             LOGGER.error("Не удалось выполнить операцию: { }", e.getCause());
             throw new IllegalStateException();
         }
@@ -96,7 +105,7 @@ public class WordStore implements Store<Word>, AutoCloseable {
                         selection.getString("word")
                 ));
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
             LOGGER.error("Не удалось выполнить операцию: { }", e.getCause());
             throw new IllegalStateException();
         }
@@ -104,10 +113,9 @@ public class WordStore implements Store<Word>, AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() throws SQLException {
         if (connection != null) {
             connection.close();
         }
     }
-
 }
